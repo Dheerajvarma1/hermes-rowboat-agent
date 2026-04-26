@@ -7,7 +7,7 @@
 
 The **Hermes + Rowboat Dual-Layer AI Environment** is a fully local, privacy-first AI agent system. It integrates a **Semantic Memory Vault** with **Hermes 3** (Nous Research) to provide context-aware responses that persist and improve across sessions.
 
-The system is purpose-built to eliminate the core failure of standard AI tools — losing all context when closed — by applying embedding-based retrieval, session-aware memory labelling, and a self-evaluation feedback loop that dynamically adapts the reasoning prompt over time.
+The system is purpose-built to eliminate the core failure of standard AI tools - losing all context when closed - by applying embedding-based retrieval, session-aware memory labelling, and a self-evaluation feedback loop that dynamically adapts the reasoning prompt over time.
 
 ---
 
@@ -20,7 +20,7 @@ The system is purpose-built to eliminate the core failure of standard AI tools �
 | Memory Format | Local Markdown Vault + JSON Embedding Vectors |
 | Retrieval Mode | Semantic (Cosine Similarity) |
 | Evaluation | Self-scoring loop (1–10 per response) |
-| Dependencies | Python Standard Library only — zero pip installs |
+| Dependencies | Python Standard Library only - zero pip installs |
 | Support OS | Windows / macOS / Linux |
 
 ---
@@ -28,7 +28,7 @@ The system is purpose-built to eliminate the core failure of standard AI tools �
 ## Memory Pipeline
 
 > [!IMPORTANT]
-> Context is retrieved semantically on every query — the system does not replay the last N messages. It finds the most relevant past entries across all sessions and injects only those into the prompt.
+> Context is retrieved semantically on every query - the system does not replay the last N messages. It finds the most relevant past entries across all sessions and injects only those into the prompt.
 
 **Step 1: Query Embedding (`memory.search_relevant`)**
 ```python
@@ -62,7 +62,7 @@ response = ask_hermes(user_input)
 
 **Step 6: Parallel Save & Evaluate**
 ```python
-# Non-blocking — both run in background daemon threads
+# Non-blocking - both run in background daemon threads
 memory.save_async("hermes", response)
 threading.Thread(target=evaluate_response, args=(user_input, response)).start()
 ```
@@ -154,7 +154,7 @@ graph TB
         USER["Terminal Input"]
     end
 
-    subgraph MEMORY["Layer 2 — Semantic Vault"]
+    subgraph MEMORY["Layer 2 - Semantic Vault"]
         VAULT["Markdown Vault\n(.md + .json files)"]
         EMBED["nomic-embed-text\n(Ollama)"]
         COSINE["Cosine Similarity\n(Pure Python)"]
@@ -162,15 +162,15 @@ graph TB
         VAULT --> EMBED --> COSINE
     end
 
-    subgraph AGENT["agent.py — Orchestration"]
+    subgraph AGENT["agent.py - Orchestration"]
         RETRIEVE["search_relevant()"]
         BUILD["build_system_prompt()"]
         TASK["run_task_loop()"]
-        SAVE["save_async() — background"]
-        EVALUATE["evaluate_response() — background"]
+        SAVE["save_async() - background"]
+        EVALUATE["evaluate_response() - background"]
     end
 
-    subgraph REASONING["Layer 1 — Hermes 3"]
+    subgraph REASONING["Layer 1 - Hermes 3"]
         HERMES["hermes3\n(Ollama @ localhost:11434)"]
     end
 
@@ -218,7 +218,7 @@ flowchart TD
 > **Design Philosophy**
 > 1. **Relevance > Recency**: In memory systems, what was said last is not necessarily what matters now. The system retrieves by semantic similarity, not timestamp.
 > 2. **Non-Blocking Execution**: Embedding generation and self-evaluation run in background threads so the user never waits for memory writes.
-> 3. **Local Privacy**: The entire pipeline — embedding, retrieval, reasoning, and evaluation — runs locally on Ollama. No data leaves the device.
+> 3. **Local Privacy**: The entire pipeline - embedding, retrieval, reasoning, and evaluation - runs locally on Ollama. No data leaves the device.
 > 4. **Self-Improvement**: Quality scores accumulate across sessions and feed back into the system prompt, making the agent progressively more accurate.
 
 ---
@@ -268,14 +268,14 @@ python agent.py
 ## Features
 
 ### Core Memory Capabilities
-- **Semantic Retrieval**: Embeds every query and finds the top-5 most cosine-similar vault entries — not the last N messages.
+- **Semantic Retrieval**: Embeds every query and finds the top-5 most cosine-similar vault entries - not the last N messages.
 - **Session Awareness**: Writes a session marker on startup so `memory` command correctly labels `[CURRENT SESSION]` vs `[PREVIOUS SESSION]` entries.
 - **Persistent Vault**: All entries survive across restarts as `.md` + `.json` pairs. The system builds intelligence over time.
 - **Evaluation Store**: Each response is scored 1–10 and stored as a separate `_eval.json` file, excluded from semantic search but used for quality stats.
 
 ### Implementation Details
 - **`memory.search_relevant(query, top_k)`**: Embeds the query, scores all `.json` vault entries via cosine similarity, returns top-k ranked results.
-- **`memory.save_async(role, content)`**: Writes the `.md` file and generates the embedding in a background daemon thread — non-blocking.
+- **`memory.save_async(role, content)`**: Writes the `.md` file and generates the embedding in a background daemon thread - non-blocking.
 - **`memory.save_eval(score, reasoning)`**: Stores a structured quality record as `_eval.json` with score, reasoning, question, and response preview.
 - **`memory.get_quality_stats()`**: Reads all `_eval.json` files, computes average and recent average, and returns a trend label (`improving`, `stable`, `declining`).
 - **`agent.build_system_prompt()`**: Reads quality stats and dynamically appends an adaptation note when the rolling average is below 6.0 or above 8.5.
@@ -287,12 +287,12 @@ python agent.py
 
 | File / Directory | Description |
 |:---|:---|
-| `memory/*_user.md` | User messages — readable text with frontmatter |
+| `memory/*_user.md` | User messages - readable text with frontmatter |
 | `memory/*_user.json` | User message embedding vectors (768 floats) |
-| `memory/*_hermes.md` | Hermes responses — readable text with frontmatter |
+| `memory/*_hermes.md` | Hermes responses - readable text with frontmatter |
 | `memory/*_hermes.json` | Hermes response embedding vectors |
-| `memory/*_eval.json` | Quality scores — structured JSON, no `.md` pair |
-| `memory/*_system.md` | Session start markers — used for session labelling |
+| `memory/*_eval.json` | Quality scores - structured JSON, no `.md` pair |
+| `memory/*_system.md` | Session start markers - used for session labelling |
 | `config.json` | All runtime configuration |
 
 ---
@@ -301,8 +301,8 @@ python agent.py
 
 ```
 hermes-rowboat-env/
-├── agent.py          # Orchestration — input loop, Hermes calls, task loop, eval threading
-├── memory.py         # Memory layer — embed, save, search, evaluate, summarise
+├── agent.py          # Orchestration - input loop, Hermes calls, task loop, eval threading
+├── memory.py         # Memory layer - embed, save, search, evaluate, summarise
 ├── config.json       # All configuration (model, temperature, embed model, system prompt)
 ├── README.md         # Project documentation (you are here)
 └── memory/           # Auto-created vault
@@ -325,12 +325,12 @@ hermes-rowboat-env/
 | Concern | Cloud AI (ChatGPT, Claude, etc.) | This System |
 |:---|:---|:---|
 | **Memory across sessions** | Forgotten unless you pay for memory features | Persistent across every session, always |
-| **Data privacy** | Conversations sent to and stored on external servers | Everything stays on your machine — localhost only |
-| **Internet required** | Yes — always | Only for initial model download. Fully offline after that |
-| **Cost** | Subscription or API credits | Free — runs on your own hardware |
-| **Context relevance** | Last N messages in the window | Semantically retrieved — finds what matters, not just what's recent |
+| **Data privacy** | Conversations sent to and stored on external servers | Everything stays on your machine - localhost only |
+| **Internet required** | Yes - always | Only for initial model download. Fully offline after that |
+| **Cost** | Subscription or API credits | Free - runs on your own hardware |
+| **Context relevance** | Last N messages in the window | Semantically retrieved - finds what matters, not just what's recent |
 | **Autonomous tasks** | Requires plugins or paid tiers | Built-in `task:` loop, no add-ons needed |
-| **Customisation** | Limited to settings provided | Full access — change model, prompt, temperature, retrieval depth |
+| **Customisation** | Limited to settings provided | Full access - change model, prompt, temperature, retrieval depth |
 
 > [!WARNING]
 > **Trade-off**: Cloud models (GPT-4, Claude Opus) are significantly more capable than `hermes3`. This system prioritises **privacy and persistence** over raw reasoning power. For sensitive or long-running personal projects, the trade-off is worth it. For one-off complex tasks, a cloud model may produce better single-turn answers.
@@ -341,19 +341,19 @@ hermes-rowboat-env/
 
 Run these checks after your first session to confirm all three layers are active:
 
-**Check 1 — Reasoning layer (Hermes)**
+**Check 1 - Reasoning layer (Hermes)**
 ```bash
 ollama list
 ```
 You should see `hermes3` in the list with a size of ~4.3 GB.
 
-**Check 2 — Embedding layer (nomic-embed-text)**
+**Check 2 - Embedding layer (nomic-embed-text)**
 ```bash
 ollama list
 ```
 You should see `nomic-embed-text` in the list with a size of ~274 MB.
 
-**Check 3 — Memory vault is saving**
+**Check 3 - Memory vault is saving**
 
 After sending one message, check the `memory/` folder:
 ```bash
@@ -361,9 +361,9 @@ ls memory/
 ```
 You should see at least three files: one `_system.md` (session marker), one `_user.md` + `_user.json` pair, and one `_hermes.md` + `_hermes.json` pair.
 
-If the `.json` files are missing, `nomic-embed-text` is not running — pull it with `ollama pull nomic-embed-text`.
+If the `.json` files are missing, `nomic-embed-text` is not running - pull it with `ollama pull nomic-embed-text`.
 
-**Check 4 — Evaluation layer is storing scores**
+**Check 4 - Evaluation layer is storing scores**
 
 After sending 3+ messages, wait 15 seconds then type `memory`. You should see:
 ```
@@ -373,7 +373,7 @@ Average     : X/10
 ```
 If `Evaluations : 0`, the background eval thread is still running or the evaluation JSON parsing failed. Wait longer and try again.
 
-**Check 5 — Semantic retrieval is working**
+**Check 5 - Semantic retrieval is working**
 
 Ask about a topic from a previous session. If Hermes references it accurately without you repeating it, the semantic retrieval is pulling relevant vault entries correctly.
 
@@ -388,8 +388,8 @@ Ask about a topic from a previous session. If Hermes references it accurately wi
 |:---|:---|:---|
 | First response (cold start) | 20–60 seconds | Model loads into memory on first call |
 | Subsequent responses | 5–15 seconds | Model stays loaded between calls |
-| Embedding generation | 1–3 seconds | Runs in background — does not block you |
-| Self-evaluation | 5–15 seconds | Runs in background — does not block you |
+| Embedding generation | 1–3 seconds | Runs in background - does not block you |
+| Self-evaluation | 5–15 seconds | Runs in background - does not block you |
 | Task loop (5 steps) | 3–10 minutes | Each step is a full Hermes inference |
 | `memory` command | Instant | Reads local files only |
 
@@ -411,7 +411,7 @@ Each exchange produces two files:
 | `*_user.json` / `*_hermes.json` | ~6 KB (768 floats) |
 | `*_eval.json` | ~1 KB |
 
-A session of 20 exchanges generates roughly **280 KB** of vault data. After 100 sessions the vault will be around **28 MB** — small enough to never need attention on any modern machine.
+A session of 20 exchanges generates roughly **280 KB** of vault data. After 100 sessions the vault will be around **28 MB** - small enough to never need attention on any modern machine.
 
 **To clear the vault and start fresh:**
 ```bash
@@ -443,10 +443,10 @@ rm memory/*.md memory/*.json
 ## Frequently Asked Questions
 
 **Why does the `memory` command show double `=== NEW SESSION ===`?**
-Each run of `agent.py` writes one session marker. If you have run the agent multiple times, you will see one marker per previous session within the last 10 vault entries. This is expected and harmless — the labels are still correct.
+Each run of `agent.py` writes one session marker. If you have run the agent multiple times, you will see one marker per previous session within the last 10 vault entries. This is expected and harmless - the labels are still correct.
 
 **Why are all evaluation scores 10/10?**
-Hermes is evaluating its own responses using the same model. Self-evaluation with a single model tends toward high scores. For more critical scoring, a separate or larger evaluator model would be needed. The infrastructure is fully functional — the scoring just reflects the model's self-assessment.
+Hermes is evaluating its own responses using the same model. Self-evaluation with a single model tends toward high scores. For more critical scoring, a separate or larger evaluator model would be needed. The infrastructure is fully functional - the scoring just reflects the model's self-assessment.
 
 **What happens if `nomic-embed-text` is not pulled?**
 The `_embed()` function catches the exception silently. The `.md` file is still saved, but no `.json` embedding is written. The `memory` command falls back to `load_recent()` (session-aware last 10 entries) instead of semantic search.
@@ -455,7 +455,7 @@ The `_embed()` function catches the exception silently. The `.md` file is still 
 The agent starts normally. The first message you send will throw a `Connection refused` error from `urllib`. Start Ollama with `ollama serve` and rerun `python agent.py`.
 
 **Can I use a different model?**
-Yes. Pull any model with `ollama pull <model>` and update `"model"` in `config.json`. The embedding model can also be swapped by updating `"embed_model"` — ensure the replacement model supports the `/api/embeddings` endpoint in Ollama.
+Yes. Pull any model with `ollama pull <model>` and update `"model"` in `config.json`. The embedding model can also be swapped by updating `"embed_model"` - ensure the replacement model supports the `/api/embeddings` endpoint in Ollama.
 
 ---
 
