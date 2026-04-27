@@ -221,29 +221,26 @@ All six approaches were distinct across both runs - no repetition of strategy, d
 ### Component Overview
 
 ```mermaid
-graph TB
-    subgraph INPUT["User Input"]
-        USER["Terminal Input"]
-    end
+flowchart TB
+    USER["Terminal Input"]
 
     subgraph MEMORY["Layer 2 - Semantic Vault"]
-        VAULT["Markdown Vault\n(.md + .json files)"]
-        EMBED["nomic-embed-text\n(Ollama)"]
-        COSINE["Cosine Similarity\n(Pure Python)"]
-        EVAL["Evaluation Store\n(_eval.json files)"]
+        VAULT["Markdown Vault"]
+        EMBED["nomic-embed-text"]
+        COSINE["Cosine Similarity"]
+        EVAL["Evaluation Store"]
         VAULT --> EMBED --> COSINE
     end
 
     subgraph AGENT["agent.py - Orchestration"]
-        RETRIEVE["search_relevant()"]
-        BUILD["build_system_prompt()"]
-        TASK["run_task_loop()"]
-        SAVE["save_async() - background"]
-        EVALUATE["evaluate_response() - background"]
+        RETRIEVE["search_relevant"]
+        BUILD["build_system_prompt"]
+        SAVE["save_async - background"]
+        EVALUATE["evaluate_response - background"]
     end
 
     subgraph REASONING["Layer 1 - Hermes 3"]
-        HERMES["hermes3\n(Ollama @ localhost:11434)"]
+        HERMES["hermes3 via Ollama"]
     end
 
     USER --> RETRIEVE
