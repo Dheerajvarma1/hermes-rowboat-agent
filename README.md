@@ -260,34 +260,34 @@ flowchart TB
 flowchart TD
     START(["User Input"]) --> CHECK{"Input Type?"}
 
-    CHECK -->|"task: goal"| PLAN["run_task_loop()\nPlan 3–5 steps"]
-    CHECK -->|"research: goal"| RESEARCH["run_autoresearch_loop()\nmax_iter=3, threshold=8.0"]
-    CHECK -->|"memory"| SHOW["summarize_vault()\n+ quality stats"]
-    CHECK -->|"any message"| EMBED["Embed query\nnomic-embed-text"]
+    CHECK -->|task| PLAN["run_task_loop"]
+    CHECK -->|research| RESEARCH["run_autoresearch_loop"]
+    CHECK -->|memory| SHOW["summarize_vault + stats"]
+    CHECK -->|message| EMBED["Embed query"]
 
-    EMBED --> SEARCH["search_relevant()\nCosine similarity vs vault"]
+    EMBED --> SEARCH["search_relevant"]
     SEARCH --> TOPK["Top-5 relevant entries"]
-    TOPK --> PROMPT["build_system_prompt()\n+ quality adaptation"]
-    PROMPT --> HERMES["ask_hermes()\nOllama REST API"]
+    TOPK --> PROMPT["build_system_prompt"]
+    PROMPT --> HERMES["ask_hermes - Ollama REST"]
     HERMES --> RESPONSE(["Response to user"])
 
-    RESPONSE --> THREAD1["save_async()\nBackground thread"]
-    RESPONSE --> THREAD2["evaluate_response()\nBackground thread"]
+    RESPONSE --> THREAD1["save_async - background"]
+    RESPONSE --> THREAD2["evaluate_response - background"]
 
-    PLAN --> STEP["Execute each step\nask_hermes() per step"]
+    PLAN --> STEP["Execute each step"]
     STEP --> SYNTH["Synthesis call"]
-    SYNTH --> EVALLOOP["Evaluate synthesis\nBackground thread"]
+    SYNTH --> EVALLOOP["Evaluate synthesis - background"]
 
-    RESEARCH --> REXEC["Execute 3 approaches\nProfessor persona"]
-    REXEC --> RDUAL["evaluate_approach_dual()\nProf multi-dim + Critic adversarial"]
-    RDUAL --> RSEL["_select_best()\nComposite score + tiebreaker"]
-    RSEL --> RCHECK{"Score >= 8.0\nor max iter?"}
-    RCHECK -->|"Yes - done"| VAULT
-    RCHECK -->|"No - refine"| RREFINE["REFINEMENT_GENERATOR\n3 refined variations"]
+    RESEARCH --> REXEC["Execute 3 approaches - Professor"]
+    REXEC --> RDUAL["evaluate approach dual"]
+    RDUAL --> RSEL["select best - composite score"]
+    RSEL --> RCHECK{"Threshold met or max iter?"}
+    RCHECK -->|Yes| VAULT
+    RCHECK -->|No - refine| RREFINE["REFINEMENT GENERATOR - 3 variations"]
     RREFINE --> REXEC
 
-    THREAD1 --> VAULT[("Vault\n.md + .json")]
-    THREAD2 --> EVALSTORE[("Eval store\n_eval.json")]
+    THREAD1 --> VAULT[("Vault")]
+    THREAD2 --> EVALSTORE[("Eval store")]
 ```
 
 ### Design Principles
