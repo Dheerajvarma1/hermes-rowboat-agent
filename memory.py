@@ -137,28 +137,41 @@ def load_recent(n: int = 10) -> list[dict]:
     return entries
 
 
+def _get_session_cutoff() -> str:
+    """Return the filename timestamp prefix of the most recent session marker."""
+    system_files = sorted([f for f in os.listdir(VAULT) if f.endswith("_system.md")])
+    return system_files[-1][:15] if system_files else ""
+
+
 def search_relevant(query: str, top_k: int = 5) -> list[dict]:
-    """Return the top_k most semantically relevant memories for the given query."""
+    """Hybrid retrieval: current session entries always first, past sessions fill remaining slots semantically."""
     _ensure_vault()
     query_vec = _embed(query)
     if not query_vec:
         return load_recent(top_k)
 
-    scored = []
-    for fname in os.listdir(VAULT):
-        # Skip eval files — they are quality records, not memory entries
+    cutoff = _get_session_cutoff()
+    current_entries = []
+    past_scored = []
+
+    for fname in sorted(os.listdir(VAULT)):
         if not fname.endswith(".json") or fname.endswith("_eval.json"):
             continue
         try:
             with open(os.path.join(VAULT, fname), encoding="utf-8") as f:
                 data = json.load(f)
             score = _cosine(query_vec, data["embedding"])
-            scored.append({"role": data["role"], "content": data["content"], "score": score})
+            entry = {"role": data["role"], "content": data["content"], "score": score}
+            if cutoff and fname[:15] >= cutoff:
+                current_entries.append(entry)
+            else:
+                past_scored.append(entry)
         except Exception:
             continue
 
-    scored.sort(key=lambda x: x["score"], reverse=True)
-    return scored[:top_k]
+    past_scored.sort(key=lambda x: x["score"], reverse=True)
+    remaining = max(0, top_k - len(current_entries))
+    return current_entries + past_scored[:remaining]
 
 
 def summarize_vault(query: str = "") -> str:
@@ -169,8 +182,8 @@ def summarize_vault(query: str = "") -> str:
         lines = []
         for e in entries:
             snippet = e["content"][:120] + "..." if len(e["content"]) > 120 else e["content"]
-            lines.append(f"[{e['role'].upper()}] (relevance {e.get('score', 0):.2f}): {snippet}")
-        return "[SEMANTIC MEMORY — most relevant to current query]\n" + "\n".join(lines)
+            lines.append(f"- past {e['role']} (relevance {e.get('score', 0):.2f}): {snippet}")
+        return "PAST SESSION MEMORY (context only — do not copy this format into your response):\n" + "\n".join(lines)
 
     # Session-aware fallback (used by 'memory' command)
     entries = load_recent(10)

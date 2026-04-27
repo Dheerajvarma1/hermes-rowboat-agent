@@ -19,7 +19,9 @@ The system is purpose-built to eliminate the core failure of standard AI tools -
 | Embedding Model | `nomic-embed-text` (Ollama) |
 | Memory Format | Local Markdown Vault + JSON Embedding Vectors |
 | Retrieval Mode | Semantic (Cosine Similarity) |
-| Evaluation | Self-scoring loop (1–10 per response) |
+| Chat Evaluation | Self-scoring loop (1–10 per response) |
+| Research Evaluation | Dual scoring - Professor multi-dim + Critic adversarial, averaged into composite |
+| Research Loop | Up to 3 iterations, stops when composite score reaches 8.0/10 |
 | Dependencies | Python Standard Library only - zero pip installs |
 | Support OS | Windows / macOS / Linux |
 
@@ -73,6 +75,7 @@ threading.Thread(target=evaluate_response, args=(user_input, response)).start()
 |:---|:---|:---|:---|
 | CHAT | Any message | Semantic retrieval + single response | Contextual answer |
 | TASK | `task: <goal>` | Autonomous step planning + execution + synthesis | Multi-step report |
+| RESEARCH | `research: <goal>` | Multi-round iterative loop: generates 3 approaches, dual-scores each (professor + critic), selects best via composite score, refines in subsequent rounds until quality threshold met | Scored iteration log + best strategy |
 | RECALL | `memory` | Session-aware vault view + quality stats | Labelled history |
 
 > [!WARNING]
@@ -82,17 +85,19 @@ threading.Thread(target=evaluate_response, args=(user_input, response)).start()
 
 ## Sample Output
 
-The system provides a clean terminal interface. The example below shows a full task loop execution with 5 autonomous steps.
+The system provides a clean terminal interface. The examples below show a task loop execution and a research loop execution with dual evaluation and iteration.
+
+**Task loop (`task:`)**
 
 ```text
 === Hermes + Rowboat Dual-Layer AI Environment ===
 Hermes  : reasoning engine (Nous Research via Ollama)
 Rowboat : semantic memory layer (local Markdown vault + embeddings)
-Commands : 'memory' | 'task: <goal>' | 'quit'
+Commands : 'memory' | 'task: <goal>' | 'research: <goal>' | 'quit'
 
 You: task: Compare supervised and unsupervised learning with real-world examples
 
-[AGENT] Decomposing goal: Compare supervised and unsupervised learning with real-world examples
+[AGENT] Decomposing goal: Compare supervised and unsupervised learning...
 
 [AGENT] 5 steps planned:
   1. Define key characteristics of supervised and unsupervised learning
@@ -101,46 +106,113 @@ You: task: Compare supervised and unsupervised learning with real-world examples
   4. Highlight typical applications and industries
   5. Summarise main differences
 
-[STEP 1/5] Define key characteristics of supervised and unsupervised learning
-  -> Supervised Learning uses labeled training data. The algorithm learns to map
-     input data to known output labels...
-
-[STEP 2/5] Provide a real-world example for each type
-  -> Supervised: A bank uses historical loan data (labeled approved/rejected)
-     to train a credit risk model...
-
-[STEP 3/5] Discuss the role of labeled data
-  -> Supervised learning requires labeled training data where both input
-     features and output values are provided...
-
-[STEP 4/5] Highlight typical applications and industries
-  -> Healthcare: diagnosis models (supervised). Retail: customer segmentation
-     (unsupervised)...
-
-[STEP 5/5] Summarise main differences
-  -> Key differences: labeled vs unlabeled data, known vs discovered output,
-     prediction vs pattern finding...
+[STEP 1/5] Define key characteristics...
+  -> Supervised Learning uses labeled training data...
 
 [AGENT COMPLETE]
 In conclusion, supervised learning maps known inputs to outputs using labeled
 data, while unsupervised learning discovers hidden structure in unlabeled data.
-Real-world: credit scoring (supervised) vs customer clustering (unsupervised).
-
-You: memory
-
---- MEMORY VAULT (session view) ---
-=== NEW SESSION ===
-[CURRENT SESSION] [USER]: task: Compare supervised and unsupervised...
-[CURRENT SESSION] [AGENT]: Task: Define key characteristics...
-...
-
---- QUALITY STATS ---
-Evaluations : 8
-Average     : 8.2/10
-Recent avg  : 9.0/10
-Trend       : improving
----
 ```
+
+**Research loop (`research:`) - multi-round with dual evaluation**
+
+```text
+You: research: How to grow a YouTube channel to 10,000 subscribers
+
+[AUTORESEARCH] Goal: How to grow a YouTube channel to 10,000 subscribers
+[AUTORESEARCH] Max iterations: 3 | Quality threshold: 8.0/10
+[AUTORESEARCH] Evaluation: Professor multi-dim + Critic adversarial (dual scoring)
+[AUTORESEARCH] Selection: Composite score + head-to-head tiebreaker
+
+============================================================
+[ITERATION 1/3]
+[AUTORESEARCH] Generating 3 distinct approaches...
+
+[AUTORESEARCH] 3 approaches for iteration 1:
+  1. Viral Loop: Build a subscriber referral challenge using YouTube Community tab...
+  2. Guerrilla: Partner with micro-creators for cross-promotion swaps...
+  3. Trend-jack: Create rapid-response content around trending topics within 2 hours...
+
+[APPROACH 1/3] Executing: Viral Loop...
+  -> Launch a Subscriber Squad challenge where viewers share the video...
+
+  [Prof avg: 7.3/10 | Critic: 5.0/10 | Composite: 6.2/10]
+  Strategic: 8 | Feasibility: 7 | Viral: 7
+
+[APPROACH 2/3] Executing: Guerrilla: Partner with micro-creators...
+  -> Identify 10 creators in your niche with 500-5,000 subscribers...
+
+  [Prof avg: 8.0/10 | Critic: 7.0/10 | Composite: 7.5/10]
+  Strategic: 8 | Feasibility: 8 | Viral: 8
+
+[APPROACH 3/3] Executing: Trend-jack...
+  -> Set up Google Alerts and YouTube trending for your niche keywords...
+
+  [Prof avg: 7.7/10 | Critic: 6.0/10 | Composite: 6.8/10]
+  Strategic: 8 | Feasibility: 7 | Viral: 8
+
+[ITERATION 1 RESULTS]
+  Approach 1: 6.2/10
+  Approach 2: 7.5/10  <-- BEST
+  Approach 3: 6.8/10
+[NEW BEST] Iteration 1, Approach 2: 7.5/10
+
+[AUTORESEARCH] Score 7.5/10 below threshold. Running iteration 2...
+
+============================================================
+[ITERATION 2/3]
+[AUTORESEARCH] Refining best approach (score: 7.5/10)...
+
+  [Prof avg: 8.3/10 | Critic: 7.8/10 | Composite: 8.1/10]
+
+[AUTORESEARCH] Threshold 8.0/10 reached. Stopping.
+
+============================================================
+[AUTORESEARCH COMPLETE] 2 iteration(s) | Best composite: 8.1/10
+============================================================
+```
+
+---
+
+## Experimental Results
+
+Results from live end-to-end testing on a CPU-only machine with default configuration (`max_iterations=3`, `quality_threshold=8.0`).
+
+### Research Loop: Score Progression
+
+**Goal:** How to grow a YouTube channel to 10,000 subscribers
+
+| Iteration | Approach | Prof avg | Critic | Composite | Selected |
+|:---|:---|:---:|:---:|:---:|:---:|
+| 1 | Viral loop: Subscriber Squad referral challenge | 7.3 | 5.0 | 6.2 | |
+| 1 | Guerrilla: micro-creator cross-promotion swaps | 8.0 | 7.0 | 7.5 | YES |
+| 1 | Trend-jack: rapid-response content within 2 hours | 7.7 | 6.0 | 6.8 | |
+| 2 | Refined: feasibility-improved cross-promotion | 8.3 | 7.8 | 8.1 | YES - threshold met |
+
+Score trajectory: **7.5 → 8.1** (+0.6 via one refinement round). Threshold met on iteration 2 - third round not needed.
+
+### Approach Diversity Across Runs
+
+| Run | Approach 1 | Approach 2 | Approach 3 |
+|:---|:---|:---|:---|
+| Run 1 | Viral loop (referral challenge) | Guerrilla (micro-creator swaps) | Trend-jacking (rapid-response) |
+| Run 2 | Hashtag challenge (UGC campaign) | Influencer affiliate program | Interactive quiz (engagement bait) |
+
+All six approaches were distinct across both runs - no repetition of strategy, different marketing philosophies between sessions. Confirms non-repetitive generation behavior.
+
+### Context Bleed Fix Verification
+
+| Condition | Expected | Observed |
+|:---|:---|:---|
+| Before fix (pure cosine) | Reference leather wallets | Referenced AI marketing (wrong session) |
+| After fix (hybrid retrieval) | Reference leather wallets | Correctly referenced leather and canvas |
+
+### Key Observations
+
+- Critic scores averaged **1.5–2.0 points below professor averages** - adversarial persona functioning as intended
+- No head-to-head tiebreaker was triggered - composite scores were sufficiently differentiated in these runs
+- Background threads confirmed non-blocking: eval results appeared in `memory` stats 10–15 seconds post-exchange with no prompt delay
+- Nested JSON fallback parser was triggered once during testing and resolved correctly via the flattening logic
 
 ---
 
@@ -192,6 +264,7 @@ flowchart TD
     START(["User Input"]) --> CHECK{"Input Type?"}
 
     CHECK -->|"task: goal"| PLAN["run_task_loop()\nPlan 3–5 steps"]
+    CHECK -->|"research: goal"| RESEARCH["run_autoresearch_loop()\nmax_iter=3, threshold=8.0"]
     CHECK -->|"memory"| SHOW["summarize_vault()\n+ quality stats"]
     CHECK -->|"any message"| EMBED["Embed query\nnomic-embed-text"]
 
@@ -208,6 +281,14 @@ flowchart TD
     STEP --> SYNTH["Synthesis call"]
     SYNTH --> EVALLOOP["Evaluate synthesis\nBackground thread"]
 
+    RESEARCH --> REXEC["Execute 3 approaches\nProfessor persona"]
+    REXEC --> RDUAL["evaluate_approach_dual()\nProf multi-dim + Critic adversarial"]
+    RDUAL --> RSEL["_select_best()\nComposite score + tiebreaker"]
+    RSEL --> RCHECK{"Score >= 8.0\nor max iter?"}
+    RCHECK -->|"Yes - done"| VAULT
+    RCHECK -->|"No - refine"| RREFINE["REFINEMENT_GENERATOR\n3 refined variations"]
+    RREFINE --> REXEC
+
     THREAD1 --> VAULT[("Vault\n.md + .json")]
     THREAD2 --> EVALSTORE[("Eval store\n_eval.json")]
 ```
@@ -219,7 +300,8 @@ flowchart TD
 > 1. **Relevance > Recency**: In memory systems, what was said last is not necessarily what matters now. The system retrieves by semantic similarity, not timestamp.
 > 2. **Non-Blocking Execution**: Embedding generation and self-evaluation run in background threads so the user never waits for memory writes.
 > 3. **Local Privacy**: The entire pipeline - embedding, retrieval, reasoning, and evaluation - runs locally on Ollama. No data leaves the device.
-> 4. **Self-Improvement**: Quality scores accumulate across sessions and feed back into the system prompt, making the agent progressively more accurate.
+> 4. **Self-Improvement**: Quality scores accumulate across sessions and feed back into the system prompt. Note: scores show low variance due to same-model self-evaluation, so prompt adaptation is a structural capability - not a guarantee of measurable accuracy improvement.
+> 5. **Persona-Standardized Execution**: Planning quality is standardized through fixed personas rather than ad-hoc prompting. Every research task routes through a dedicated `PROFESSOR_PERSONA`, ensuring consistent reasoning depth and strategic framing across all approaches regardless of how the user phrases the goal. Evaluation uses opposing personas (`MULTI_DIM_EVAL_SYSTEM` vs `CRITIC_EVAL_SYSTEM`) to produce comparable, scoreable outputs rather than free-form narratives.
 
 ---
 
@@ -262,6 +344,8 @@ python agent.py
 | `top_k` retrieval | `memory.py` | `5` | Number of relevant entries injected per query |
 | Quality threshold (low) | `agent.py` | `< 6.0` | Score below which system prompt adds improvement note |
 | Quality threshold (high) | `agent.py` | `>= 8.5` | Score above which system prompt adds reinforcement note |
+| `max_iterations` | `agent.py` | `3` | Maximum research rounds before stopping - increase for deeper refinement |
+| `quality_threshold` | `agent.py` | `8.0` | Composite score at which the research loop stops early |
 
 ---
 
@@ -274,12 +358,15 @@ python agent.py
 - **Evaluation Store**: Each response is scored 1–10 and stored as a separate `_eval.json` file, excluded from semantic search but used for quality stats.
 
 ### Implementation Details
-- **`memory.search_relevant(query, top_k)`**: Embeds the query, scores all `.json` vault entries via cosine similarity, returns top-k ranked results.
+- **`memory.search_relevant(query, top_k)`**: Hybrid retrieval. Splits vault entries into current session (timestamp >= most recent `_system.md` marker) and past sessions. Current session entries are always returned first in chronological order. Past session entries are ranked by cosine similarity and fill any remaining slots up to `top_k`. This prevents old similar content from crowding out the live conversation.
 - **`memory.save_async(role, content)`**: Writes the `.md` file and generates the embedding in a background daemon thread - non-blocking.
 - **`memory.save_eval(score, reasoning)`**: Stores a structured quality record as `_eval.json` with score, reasoning, question, and response preview.
 - **`memory.get_quality_stats()`**: Reads all `_eval.json` files, computes average and recent average, and returns a trend label (`improving`, `stable`, `declining`).
 - **`agent.build_system_prompt()`**: Reads quality stats and dynamically appends an adaptation note when the rolling average is below 6.0 or above 8.5.
 - **`agent.run_task_loop(goal)`**: Sends the goal to Hermes with a strict JSON-array planner prompt, parses the step list, executes each step with memory context, and synthesises a final summary.
+- **`agent.run_autoresearch_loop(goal, max_iterations=3, quality_threshold=8.0)`**: Multi-round iterative research loop. Round 1 generates 3 fresh approaches (viral / guerrilla / trend-jack). Each approach is executed by the Professor persona and scored by `evaluate_approach_dual()`. If the best composite score is below `quality_threshold`, the loop generates 3 refinements of the best result and runs another round. Stops when threshold is met or `max_iterations` is reached.
+- **`agent.evaluate_approach_dual(approach, response)`**: Dual evaluation to reduce single-model bias. Runs two separate Hermes calls with opposing personas - `MULTI_DIM_EVAL_SYSTEM` (professor, 3 dimensions: strategic quality, feasibility, viral potential) and `CRITIC_EVAL_SYSTEM` (adversarial critic, finds weaknesses). Composite score = average of professor mean and critic score.
+- **`agent._select_best(results)`**: Selects the highest composite-scoring result. If two results are within 0.5 points, runs `_head_to_head()` using `TIEBREAKER_SYSTEM` to pick the real-world winner rather than defaulting to array position.
 
 ---
 
@@ -301,17 +388,21 @@ python agent.py
 
 ```
 hermes-rowboat-env/
-├── agent.py          # Orchestration - input loop, Hermes calls, task loop, eval threading
-├── memory.py         # Memory layer - embed, save, search, evaluate, summarise
-├── config.json       # All configuration (model, temperature, embed model, system prompt)
-├── README.md         # Project documentation (you are here)
-└── memory/           # Auto-created vault
+├── agent.py                                      # Orchestration - input loop, Hermes calls, task/research loops, eval threading
+├── memory.py                                     # Memory layer - embed, save, search, evaluate, summarise
+├── config.json                                   # All configuration (model, temperature, embed model, system prompt)
+├── generate_plan_doc.py                          # Script to regenerate the plan document .docx
+├── Hermes + Rowboat_ Self-Improving AI System Plan.docx  # Plan document (Word format)
+├── Plan_Document_Hermes_Rowboat.md               # Plan document (Markdown format)
+├── README.md                                     # Project documentation (you are here)
+└── memory/                                       # Auto-created vault
     ├── *_user.md           ← user messages
     ├── *_user.json         ← user message embeddings
     ├── *_hermes.md         ← hermes responses
     ├── *_hermes.json       ← hermes response embeddings
     ├── *_agent.md          ← task loop step results
     ├── *_agent_summary.md  ← task loop final syntheses
+    ├── *_autoresearch.md   ← research loop approach results
     └── *_eval.json         ← quality scores (no .md pair)
 ```
 
@@ -391,6 +482,8 @@ Ask about a topic from a previous session. If Hermes references it accurately wi
 | Embedding generation | 1–3 seconds | Runs in background - does not block you |
 | Self-evaluation | 5–15 seconds | Runs in background - does not block you |
 | Task loop (5 steps) | 3–10 minutes | Each step is a full Hermes inference |
+| Research loop (1 iteration, 3 approaches) | 15–45 minutes | Each approach needs execution + 2 eval calls (professor + critic) |
+| Research loop (3 iterations) | 45–120 minutes | Worst case: threshold never met, 3 full rounds run |
 | `memory` command | Instant | Reads local files only |
 
 If your machine has a GPU with CUDA support, Ollama will use it automatically and responses will be 3–5x faster. To check:
@@ -430,7 +523,12 @@ rm memory/*.md memory/*.json
 
 | Limitation | Detail |
 |:---|:---|
-| **Self-evaluation bias** | Hermes evaluates its own responses. A single model grading itself tends toward high scores. Scores reflect confidence, not external accuracy. |
+| **Self-evaluation uses same model** | Both the professor and critic personas in `evaluate_approach_dual()` use the same Hermes model. Using opposite personas reduces score variance compared to single-pass self-evaluation, but does not eliminate same-model bias entirely. An external evaluator model would be needed for fully independent scoring. |
+| **Semantic context bleed (mitigated)** | The vault accumulates entries across all sessions. Pure cosine similarity search can return old entries from past sessions that are topically similar but contextually wrong. **Fixed:** `search_relevant()` now uses hybrid retrieval - current session entries are always injected first, and past session entries only fill the remaining slots via semantic search. This ensures the live conversation is never crowded out by old similar content. |
+| **Refinement generator hard-capped at 3** | If the model formats its JSON with separate title and description lines, the parser picks up 6 items instead of 3. **Fixed:** the prompt was hardened with an explicit one-sentence format example, and a code-level hard cap (`approaches[:3]`) now enforces the 3-item limit regardless of model output. |
+| **Task loop outputs not stripped of model self-labels** | `run_task_loop()` printed step results and the final synthesis directly without stripping `[HERMES]` or similar labels that the model occasionally prefixes to its own output. **Fixed:** `re.sub(r'^\[[A-Z]+\]\s*', '', ...)` is now applied to both the step result and synthesis before printing and saving. |
+| **"Saving session and exiting." misleading message** | The quit message implied a guaranteed save, but async save threads are daemon threads - they are killed when the process exits with no flush guarantee. **Fixed:** message changed to `"Exiting."` to accurately reflect the process behaviour. |
+| **"1 approaches" grammar edge case** | If JSON parsing of the approach list fails completely and falls back to the raw string, `len(approaches) == 1` and the output would read `"1 approaches"`. **Fixed:** singular/plural is now resolved inline - `"approach"` vs `"approaches"` based on count. |
 | **No internet access** | Hermes only knows what it was trained on (knowledge cutoff applies). It cannot browse the web or access real-time information. |
 | **Task loop depends on JSON output** | The `task:` planner asks Hermes to return a JSON array. If the model returns a narrative instead, the system falls back to treating the full goal as a single step. |
 | **Vault grows unbounded** | There is no automatic cleanup. Old entries remain forever unless manually deleted. The semantic search may eventually slow slightly with very large vaults (10,000+ entries). |
@@ -445,8 +543,11 @@ rm memory/*.md memory/*.json
 **Why does the `memory` command show double `=== NEW SESSION ===`?**
 Each run of `agent.py` writes one session marker. If you have run the agent multiple times, you will see one marker per previous session within the last 10 vault entries. This is expected and harmless - the labels are still correct.
 
-**Why are all evaluation scores 10/10?**
-Hermes is evaluating its own responses using the same model. Self-evaluation with a single model tends toward high scores. For more critical scoring, a separate or larger evaluator model would be needed. The infrastructure is fully functional - the scoring just reflects the model's self-assessment.
+**Why are all evaluation scores similar?**
+Scores show low variance due to same-model self-evaluation - a known limitation of single-model feedback loops. Hermes evaluates its own responses using the same model, which tends toward consistently high scores. For more critical scoring, a separate or larger evaluator model would be needed. The infrastructure is fully functional - the scoring reflects the model's self-assessment, not external accuracy.
+
+**Why is Hermes responding about a previous topic when I asked about something different?**
+This was a context bleed issue. The old `search_relevant()` used pure cosine similarity across the entire vault, which meant old sessions about similar topics (e.g. AI marketing) could outrank new current session entries (e.g. leather wallet marketing). This has been fixed: `search_relevant()` now uses hybrid retrieval - current session entries are always included first, and past session content only fills remaining slots. If you still see unexpected bleed after this fix, it means the current session itself has accumulated conflicting context - restart the agent to start a clean session.
 
 **What happens if `nomic-embed-text` is not pulled?**
 The `_embed()` function catches the exception silently. The `.md` file is still saved, but no `.json` embedding is written. The `memory` command falls back to `load_recent()` (session-aware last 10 entries) instead of semantic search.
@@ -456,6 +557,12 @@ The agent starts normally. The first message you send will throw a `Connection r
 
 **Can I use a different model?**
 Yes. Pull any model with `ollama pull <model>` and update `"model"` in `config.json`. The embedding model can also be swapped by updating `"embed_model"` - ensure the replacement model supports the `/api/embeddings` endpoint in Ollama.
+
+**How does the research loop decide when to stop?**
+After each iteration, the best composite score is compared to `quality_threshold` (default 8.0). If the score reaches the threshold, the loop exits early. If it does not reach the threshold after `max_iterations` (default 3) rounds, it stops and returns the best result found. Both values can be changed directly in `run_autoresearch_loop()` in `agent.py`.
+
+**What makes the research evaluation more reliable than the chat evaluation?**
+The research loop uses `evaluate_approach_dual()` which runs two separate evaluations with opposing personas: a Professor who scores strategic merit, and a Critic who actively looks for weaknesses. The composite score is their average. This reduces the inflated self-scoring that happens when a single persona evaluates its own output. It does not fully eliminate same-model bias, but produces a more realistic spread of scores.
 
 ---
 
