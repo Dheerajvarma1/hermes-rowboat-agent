@@ -74,8 +74,8 @@ threading.Thread(target=evaluate_response, args=(user_input, response)).start()
 | Mode | Trigger | Behaviour | Output |
 |:---|:---|:---|:---|
 | CHAT | Any message | Semantic retrieval + single response | Contextual answer |
-| TASK | `task: <goal>` | Autonomous step planning + execution + synthesis | Multi-step report |
-| RESEARCH | `research: <goal>` | Multi-round iterative loop: generates 3 approaches, dual-scores each (professor + critic), selects best via composite score, refines in subsequent rounds until quality threshold met | Scored iteration log + best strategy |
+| TASK | `task: <goal>` | Autonomous step planning + execution + synthesis. If `research:` was run earlier in the session, all steps are grounded strictly in the research strategy's tactics via `STRATEGY_TASK_PLANNER_SYSTEM` — no generic content | Multi-step report |
+| RESEARCH | `research: <goal>` | Multi-round iterative loop: generates 3 approaches, dual-scores each (professor + critic), selects best via composite score, refines in subsequent rounds until quality threshold met. Stores the winning strategy for downstream `task:` grounding | Scored iteration log + best strategy |
 | RECALL | `memory` | Session-aware vault view + quality stats | Labelled history |
 
 > [!WARNING]
@@ -107,7 +107,9 @@ You: task: Compare supervised and unsupervised learning with real-world examples
   5. Summarise main differences
 
 [STEP 1/5] Define key characteristics...
-  -> Supervised Learning uses labeled training data...
+
+Supervised learning uses labeled training data where inputs are mapped to
+known outputs. The model learns by minimizing prediction error...
 
 [AGENT COMPLETE]
 In conclusion, supervised learning maps known inputs to outputs using labeled
@@ -134,19 +136,25 @@ You: research: How to grow a YouTube channel to 10,000 subscribers
   3. Trend-jack: Create rapid-response content around trending topics within 2 hours...
 
 [APPROACH 1/3] Executing: Viral Loop...
-  -> Launch a Subscriber Squad challenge where viewers share the video...
+
+Launch a Subscriber Squad challenge where viewers share the video to unlock
+a bonus resource. Use YouTube Community tab to seed the challenge...
 
   [Prof avg: 7.3/10 | Critic: 5.0/10 | Composite: 6.2/10]
   Strategic: 8 | Feasibility: 7 | Viral: 7
 
 [APPROACH 2/3] Executing: Guerrilla: Partner with micro-creators...
-  -> Identify 10 creators in your niche with 500-5,000 subscribers...
+
+Identify 10 creators in your niche with 500-5,000 subscribers and propose
+a no-cost cross-promotion swap: they feature your channel in their end screen...
 
   [Prof avg: 8.0/10 | Critic: 7.0/10 | Composite: 7.5/10]
   Strategic: 8 | Feasibility: 8 | Viral: 8
 
 [APPROACH 3/3] Executing: Trend-jack...
-  -> Set up Google Alerts and YouTube trending for your niche keywords...
+
+Set up Google Alerts and YouTube trending for your niche keywords. When a
+topic spikes, publish a response video within 2 hours using a pre-built template...
 
   [Prof avg: 7.7/10 | Critic: 6.0/10 | Composite: 6.8/10]
   Strategic: 8 | Feasibility: 7 | Viral: 8
@@ -354,16 +362,32 @@ python agent.py
 - **Persistent Vault**: All entries survive across restarts as `.md` + `.json` pairs. The system builds intelligence over time.
 - **Evaluation Store**: Each response is scored 1–10 and stored as a separate `_eval.json` file, excluded from semantic search but used for quality stats.
 
+### Research → Task Pipeline
+
+Run `research:` first to find the best strategy, then run `task:` to execute it. When both commands are used in the same session, `task:` is automatically grounded in the research output:
+
+```
+You: research: How to grow a YouTube channel to 10,000 subscribers
+[AUTORESEARCH] ... selects best strategy (composite: 8.1/10) ...
+
+You: task: Create a 7-day content calendar
+[AGENT] Decomposing goal using research strategy as context...
+[STEP 1/5] Day 1: Instagram Story quiz — What is your growth type? (viral loop tactic)
+...
+```
+
+Without a prior `research:` run, `task:` behaves as before: plain goal planning with session context.
+
 ### Implementation Details
 - **`memory.search_relevant(query, top_k)`**: Hybrid retrieval. Splits vault entries into current session (timestamp >= most recent `_system.md` marker) and past sessions. Current session entries are always returned first in chronological order. Past session entries are ranked by cosine similarity and fill any remaining slots up to `top_k`. This prevents old similar content from crowding out the live conversation.
 - **`memory.save_async(role, content)`**: Writes the `.md` file and generates the embedding in a background daemon thread - non-blocking.
 - **`memory.save_eval(score, reasoning)`**: Stores a structured quality record as `_eval.json` with score, reasoning, question, and response preview.
 - **`memory.get_quality_stats()`**: Reads all `_eval.json` files, computes average and recent average, and returns a trend label (`improving`, `stable`, `declining`).
 - **`agent.build_system_prompt()`**: Reads quality stats and dynamically appends an adaptation note when the rolling average is below 6.0 or above 8.5.
-- **`agent.run_task_loop(goal)`**: Sends the goal to Hermes with a strict JSON-array planner prompt, parses the step list, executes each step with memory context, and synthesises a final summary.
-- **`agent.run_autoresearch_loop(goal, max_iterations=3, quality_threshold=8.0)`**: Multi-round iterative research loop. Round 1 generates 3 fresh approaches (viral / guerrilla / trend-jack). Each approach is executed by the Professor persona and scored by `evaluate_approach_dual()`. If the best composite score is below `quality_threshold`, the loop generates 3 refinements of the best result and runs another round. Stops when threshold is met or `max_iterations` is reached.
+- **`agent.run_task_loop(goal)`**: Strategy-aware task executor. If `research:` was run earlier in the session, `_last_research_best` is set and the planner uses `STRATEGY_TASK_PLANNER_SYSTEM` — every step must reference a named tactic from the research strategy, and each step is executed with the full strategy context injected. If no research was done, falls back to recent session buffer context, then plain goal. Synthesis explicitly references the tactics that were executed.
+- **`agent.run_autoresearch_loop(goal, max_iterations=3, quality_threshold=8.0)`**: Multi-round iterative research loop. Round 1 generates 3 fresh approaches (viral / guerrilla / trend-jack). Each approach is executed by the Professor persona and scored by `evaluate_approach_dual()`. If the best composite score is below `quality_threshold`, the loop generates 3 refinements of the best result and runs another round. Stops when threshold is met or `max_iterations` is reached. Stores the winning result in `_last_research_best` so a subsequent `task:` command can ground itself in it.
 - **`agent.evaluate_approach_dual(approach, response)`**: Dual evaluation to reduce single-model bias. Runs two separate Hermes calls with opposing personas - `MULTI_DIM_EVAL_SYSTEM` (professor, 3 dimensions: strategic quality, feasibility, viral potential) and `CRITIC_EVAL_SYSTEM` (adversarial critic, finds weaknesses). Composite score = average of professor mean and critic score.
-- **`agent._select_best(results)`**: Selects the highest composite-scoring result. If two results are within 0.5 points, runs `_head_to_head()` using `TIEBREAKER_SYSTEM` to pick the real-world winner rather than defaulting to array position.
+- **`agent._select_best(results)`**: Selects the highest composite-scoring result. If the top 2 scores are within 0.5 points of each other, runs `_head_to_head()` using `TIEBREAKER_SYSTEM` to pick the real-world winner. The tiebreaker prints the winner's approach text so the output is unambiguous regardless of approach ordering.
 
 ---
 

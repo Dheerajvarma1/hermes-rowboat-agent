@@ -17,10 +17,26 @@ memory.EMBED_MODEL = HERMES.get("embed_model", "nomic-embed-text")
 # exchange has been written and embedded to the vault.
 _session_buffer: list[dict] = []
 
+# Holds the best result from the most recent research: run so task: can ground itself in it.
+_last_research_best: dict | None = None
+
 TASK_PLANNER_SYSTEM = (
     "You are a task planner. Given a goal, respond with ONLY a valid JSON array of 3-5 "
     "concrete step strings. No explanation, no markdown fences, just the JSON array. "
     'Example: ["Step 1: Research X", "Step 2: Analyse Y", "Step 3: Summarise findings"]'
+)
+
+STRATEGY_TASK_PLANNER_SYSTEM = (
+    "You are a task planner. You will be given a specific research strategy with identified tactics, "
+    "mechanisms, and platforms. Your job is to plan execution steps grounded STRICTLY in those tactics. "
+    "Do NOT generate generic content. Do NOT invent new tactics. "
+    "Read the strategy carefully, extract the specific tactics (e.g. quizzes, polls, share-to-earn, "
+    "viral loops, FOMO triggers, referral systems) and plan steps that use ONLY those tactics. "
+    "Every step must directly reference a specific tactic named in the strategy. "
+    "Respond with ONLY a valid JSON array of 3-5 concrete step strings. "
+    'Example: ["Day 1: Instagram Story quiz - What is your productivity type? (viral loop tactic)", '
+    '"Day 2: Reel showing quiz results + CTA to share for FOMO", '
+    '"Day 3: Share-to-earn post - tag 3 friends to unlock premium feature"]'
 )
 
 EVAL_SYSTEM = (
@@ -206,22 +222,24 @@ def _head_to_head(a: dict, b: dict) -> dict:
             data = json.loads(match.group())
             winner_num = int(data.get("winner", 1))
             reasoning = data.get("reasoning", "")
-            print(f"  [TIEBREAKER] Approach {winner_num} wins: {reasoning}")
-            return a if winner_num == 1 else b
+            winner = a if winner_num == 1 else b
+            print(f"  [TIEBREAKER] Winner: {winner['approach'][:60]}... | {reasoning}")
+            return winner
     except Exception:
         pass
     return a
 
 
 def _select_best(results: list) -> dict:
-    """Select best result by composite score. Runs head-to-head for ties within 0.5 points."""
+    """Select best result by composite score. Runs head-to-head only when the top 2 scores are within 0.5 points."""
     sorted_results = sorted(results, key=lambda x: x["composite"], reverse=True)
-    best = sorted_results[0]
-    tied = [r for r in sorted_results if abs(r["composite"] - best["composite"]) <= 0.5]
-    if len(tied) > 1:
-        print(f"  [TIE] {len(tied)} approaches within 0.5 pts - running head-to-head...")
-        return _head_to_head(tied[0], tied[1])
-    return best
+    if (len(sorted_results) > 1
+            and abs(sorted_results[0]["composite"] - sorted_results[1]["composite"]) <= 0.5):
+        s0 = sorted_results[0]["composite"]
+        s1 = sorted_results[1]["composite"]
+        print(f"  [TIE] Top 2 within 0.5 pts ({s0:.1f} vs {s1:.1f}) - running head-to-head...")
+        return _head_to_head(sorted_results[0], sorted_results[1])
+    return sorted_results[0]
 
 
 def run_autoresearch_loop(goal: str, max_iterations: int = 3, quality_threshold: float = 8.0):
@@ -284,7 +302,7 @@ def run_autoresearch_loop(goal: str, max_iterations: int = 3, quality_threshold:
                 f"content ideas, and expected outcomes. Be concrete and practical."
             )
             response = ask_hermes(execution_prompt, system_override=PROFESSOR_PERSONA, use_memory=False)
-            print(f"  -> {response[:200]}{'...' if len(response) > 200 else ''}\n")
+            print(f"\n{response}\n")
 
             scores = evaluate_approach_dual(approach, response)
             composite = scores["composite"]
@@ -349,11 +367,38 @@ def run_autoresearch_loop(goal: str, max_iterations: int = 3, quality_threshold:
     memory.save_async("autoresearch_best", comparison, tags=["autoresearch", "best_result"])
     print("[AUTORESEARCH] Final result saved to vault.\n")
 
+    global _last_research_best
+    _last_research_best = best_overall
+
 
 def run_task_loop(goal: str):
     print(f"\n[AGENT] Decomposing goal: {goal}\n")
 
-    plan_raw = ask_hermes(goal, system_override=TASK_PLANNER_SYSTEM, use_memory=False)
+    if _last_research_best:
+        strategy_context = (
+            f"Approach: {_last_research_best['approach']}\n\n"
+            f"Full strategy:\n{_last_research_best['response'][:1200]}"
+        )
+        enriched_goal = (
+            f"Strategy from AutoResearch to execute:\n{strategy_context}\n\n"
+            f"STRICT REQUIREMENT: Use ONLY the specific tactics from this strategy "
+            f"(e.g. quizzes, polls, share-to-earn, viral loops, FOMO). "
+            f"Do NOT create generic content. Every step must reference a named tactic from the strategy.\n\n"
+            f"Task: {goal}"
+        )
+        planner_system = STRATEGY_TASK_PLANNER_SYSTEM
+    elif _session_buffer:
+        recent = "\n".join(
+            f"{e['role'].capitalize()}: {e['content'][:300]}"
+            for e in _session_buffer[-4:]
+        )
+        enriched_goal = f"Recent session context:\n{recent}\n\nTask to plan: {goal}"
+        planner_system = TASK_PLANNER_SYSTEM
+    else:
+        enriched_goal = goal
+        planner_system = TASK_PLANNER_SYSTEM
+
+    plan_raw = ask_hermes(enriched_goal, system_override=planner_system, use_memory=False)
 
     try:
         match = re.search(r'\[.*?\]', plan_raw, re.DOTALL)
@@ -369,16 +414,26 @@ def run_task_loop(goal: str):
     results = []
     for i, task in enumerate(tasks, 1):
         print(f"[STEP {i}/{len(tasks)}] {task}")
-        result = ask_hermes(task)
+        if _last_research_best:
+            step_prompt = (
+                f"Strategy context:\n{strategy_context}\n\n"
+                f"Task: {task}\n\n"
+                f"Execute this task using ONLY the specific tactics from the strategy above. "
+                f"Reference the actual tactics by name. Be concrete and actionable."
+            )
+            result = ask_hermes(step_prompt, use_memory=False)
+        else:
+            result = ask_hermes(task)
         result = re.sub(r'^\[[A-Z]+\]\s*', '', result).strip()
-        print(f"  -> {result[:200]}{'...' if len(result) > 200 else ''}\n")
+        print(f"\n{result}\n")
         results.append({"task": task, "result": result})
         memory.save_async("agent", f"Task: {task}\nResult: {result}", tags=["task_loop", f"step_{i}"])
 
     synthesis_prompt = (
         f"Goal: {goal}\n\n"
         + "\n".join(f"Step {i+1}: {r['task']}\nResult: {r['result']}" for i, r in enumerate(results))
-        + "\n\nProvide a concise final summary of what was accomplished."
+        + "\n\nProvide a concise final summary of what was accomplished, "
+        + "referencing the specific tactics that were executed."
     )
     final = ask_hermes(synthesis_prompt, use_memory=False)
     final = re.sub(r'^\[[A-Z]+\]\s*', '', final).strip()
@@ -394,8 +449,9 @@ def run_task_loop(goal: str):
 
 
 def run():
-    global _session_buffer
+    global _session_buffer, _last_research_best
     _session_buffer = []
+    _last_research_best = None
 
     print("\n=== Hermes + Rowboat Dual-Layer AI Environment ===")
     print("Hermes  : reasoning engine (Nous Research via Ollama)")
