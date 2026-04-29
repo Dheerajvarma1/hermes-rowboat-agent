@@ -85,100 +85,36 @@ threading.Thread(target=evaluate_response, args=(user_input, response)).start()
 
 ## Sample Output
 
-The system provides a clean terminal interface. The examples below show a task loop execution and a research loop execution with dual evaluation and iteration.
+These are real terminal outputs from a live end-to-end run on a CPU-only machine. The output is split across multiple screenshots to preserve readability.
 
-**Task loop (`task:`)**
+---
 
-```text
-=== Hermes + Rowboat Dual-Layer AI Environment ===
-Hermes  : reasoning engine (Nous Research via Ollama)
-Rowboat : semantic memory layer (local Markdown vault + embeddings)
-Commands : 'memory' | 'task: <goal>' | 'research: <goal>' | 'quit'
+### Output 1 — Research Loop
 
-You: task: Compare supervised and unsupervised learning with real-world examples
+**Goal:** `research: develop a viral marketing strategy for a student startup launching an AI productivity app with zero budget`
 
-[AGENT] Decomposing goal: Compare supervised and unsupervised learning...
+3 iterations run across 3 approaches each. The loop ran to max iterations (threshold not met) and returned the best composite score found.
 
-[AGENT] 5 steps planned:
-  1. Define key characteristics of supervised and unsupervised learning
-  2. Provide a real-world example for each type
-  3. Discuss the role of labeled data
-  4. Highlight typical applications and industries
-  5. Summarise main differences
+![Output1-part1](screenshots/Output1-part1.png)
+![Output1-part2](screenshots/Output1-part2.png)
+![Output1-part3](screenshots/Output1-part3..png)
+![Output1-part4](screenshots/Output1-part4.png)
+![Output1-part5](screenshots/Output1-part5.png)
+![Output1-part6](screenshots/Output1-part6.png)
+![Output1-part7](screenshots/Output1-part7.png)
+![Output1-part8](screenshots/Output1-part8.png)
+![Output1-part9](screenshots/Output1-part9.png)
 
-[STEP 1/5] Define key characteristics...
+---
 
-Supervised learning uses labeled training data where inputs are mapped to
-known outputs. The model learns by minimizing prediction error...
+### Output 2 — Task Loop (strategy-grounded from Output 1)
 
-[AGENT COMPLETE]
-In conclusion, supervised learning maps known inputs to outputs using labeled
-data, while unsupervised learning discovers hidden structure in unlabeled data.
-```
+**Goal:** `task: create a 3-day Instagram content plan based on the selected strategy`
 
-**Research loop (`research:`) - multi-round with dual evaluation**
+Run immediately after Output 1 in the same session. The task loop detected `_last_research_best` and used `STRATEGY_TASK_PLANNER_SYSTEM` — all steps are grounded strictly in the influencer + gamification tactics from the research output.
 
-```text
-You: research: How to grow a YouTube channel to 10,000 subscribers
-
-[AUTORESEARCH] Goal: How to grow a YouTube channel to 10,000 subscribers
-[AUTORESEARCH] Max iterations: 3 | Quality threshold: 8.0/10
-[AUTORESEARCH] Evaluation: Professor multi-dim + Critic adversarial (dual scoring)
-[AUTORESEARCH] Selection: Composite score + head-to-head tiebreaker
-
-============================================================
-[ITERATION 1/3]
-[AUTORESEARCH] Generating 3 distinct approaches...
-
-[AUTORESEARCH] 3 approaches for iteration 1:
-  1. Viral Loop: Build a subscriber referral challenge using YouTube Community tab...
-  2. Guerrilla: Partner with micro-creators for cross-promotion swaps...
-  3. Trend-jack: Create rapid-response content around trending topics within 2 hours...
-
-[APPROACH 1/3] Executing: Viral Loop...
-
-Launch a Subscriber Squad challenge where viewers share the video to unlock
-a bonus resource. Use YouTube Community tab to seed the challenge...
-
-  [Prof avg: 7.3/10 | Critic: 5.0/10 | Composite: 6.2/10]
-  Strategic: 8 | Feasibility: 7 | Viral: 7
-
-[APPROACH 2/3] Executing: Guerrilla: Partner with micro-creators...
-
-Identify 10 creators in your niche with 500-5,000 subscribers and propose
-a no-cost cross-promotion swap: they feature your channel in their end screen...
-
-  [Prof avg: 8.0/10 | Critic: 7.0/10 | Composite: 7.5/10]
-  Strategic: 8 | Feasibility: 8 | Viral: 8
-
-[APPROACH 3/3] Executing: Trend-jack...
-
-Set up Google Alerts and YouTube trending for your niche keywords. When a
-topic spikes, publish a response video within 2 hours using a pre-built template...
-
-  [Prof avg: 7.7/10 | Critic: 6.0/10 | Composite: 6.8/10]
-  Strategic: 8 | Feasibility: 7 | Viral: 8
-
-[ITERATION 1 RESULTS]
-  Approach 1: 6.2/10
-  Approach 2: 7.5/10  <-- BEST
-  Approach 3: 6.8/10
-[NEW BEST] Iteration 1, Approach 2: 7.5/10
-
-[AUTORESEARCH] Score 7.5/10 below threshold. Running iteration 2...
-
-============================================================
-[ITERATION 2/3]
-[AUTORESEARCH] Refining best approach (score: 7.5/10)...
-
-  [Prof avg: 8.3/10 | Critic: 7.8/10 | Composite: 8.1/10]
-
-[AUTORESEARCH] Threshold 8.0/10 reached. Stopping.
-
-============================================================
-[AUTORESEARCH COMPLETE] 2 iteration(s) | Best composite: 8.1/10
-============================================================
-```
+![Output2-part1](screenshots/Output2-part1.png)
+![Output2-part2](screenshots/Output2-part2.png)
 
 ---
 
